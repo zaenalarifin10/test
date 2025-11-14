@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Yandere Live2D AI</title>
+<style>
+    body { margin:0; background:black; overflow:hidden; }
+    #log {
+        position:absolute;
+        bottom:0;
+        left:0;
+        width:100%;
+        color:#ff4a9e;
+        font-family:monospace;
+        font-size:18px;
+        background:rgba(0,0,0,0.4);
+        padding:8px;
+    }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="log">Yandere AI siap ❤️</div>
+
+<script src="https://unpkg.com/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+<script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/vendor/live2dcubismcore.min.js"></script>
+<script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/browser/pixi-live2d-display.min.js"></script>
+
+<script>
+const { Live2DModel } = PIXI.live2d;
+
+const app = new PIXI.Application({
+    view: document.getElementById("canvas"),
+    autoStart: true,
+    resizeTo: window,
+    backgroundColor: 0x000000
+});
+
+Live2DModel.from("https://unpkg.com/pixi-live2d-display@4.3.0/examples/models/Haru/Haru.model.json")
+    .then(model => {
+        app.stage.addChild(model);
+        model.scale.set(0.32);
+        model.position.set(app.renderer.width / 2, app.renderer.height * 0.85);
+        model.anchor.set(0.5, 1);
+
+        const log = (t) => document.getElementById("log").textContent = t;
+
+        // Voice — tanpa API
+        const voice = new Audio();
+        const lines = [
+            "Aku cuma butuh kamu... jangan lihat yang lain.", 
+            "Kalau kamu pergi... aku akan mengikutimu ke mana pun.", 
+            "Cintaku terlalu dalam... sampai menyakitkan."
+        ];
+
+        const speak = () => {
+            log("❤️ " + lines[Math.floor(Math.random() * lines.length)]);
+            // suara bebas, boleh ditambah file lokal kamu
+            voice.src = "https://files.catbox.moe/1x0y5n.mp3";
+            voice.play();
+        };
+
+        // interaksi klik
+        model.on("pointertap", e => {
+            const p = e.data.global;
+            if (p.y < app.renderer.height * 0.55) {
+                log("❤️ Kamu pegang wajahku... aku suka");
+                speak();
+                model.motion("TapBody");
+            } else {
+                log("❤️ Kamu menyentuh tubuhku... jangan berhenti");
+                speak();
+            }
+        });
+        model.interactive = true;
+
+        // idle auto
+        setInterval(() => model.motion("Idle"), 8000);
+
+        // AI yandere chatting random
+        const thoughts = [
+            "Kenapa kamu lama balas? Kamu chat siapa?",
+            "Kalau ada yang deket sama kamu... aku hapus dia.",
+            "Cintaku cuma untuk kamu. Jadi kamu juga harus begitu."
+        ];
+        setInterval(() => log("🖤 " + thoughts[Math.floor(Math.random() * thoughts.length)]), 15000);
+    });
+</script>
+</body>
+</html>
