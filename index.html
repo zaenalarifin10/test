@@ -1,44 +1,659 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Speed Test WiFi</title>
-  <style>
-    body { font-family: Arial; text-align: center; margin-top: 60px; }
-    h1 { font-size: 32px; }
-    button { padding: 12px 25px; font-size: 20px; cursor: pointer; }
-    #result { margin-top: 25px; font-size: 26px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mika - Yandere Live2D AI (All-in-One)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b10; --panel:#0f0f17; --muted:#9aa0a6; --accent:#ff59c6; --accent-2:#7cf0ff;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#e9eef6;background:linear-gradient(180deg,#05050a 0%, var(--bg) 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;}
+  .app{width:100%;max-width:1100px;display:grid;grid-template-columns:360px 1fr;gap:18px}
+  .card{background:var(--panel);border-radius:14px;padding:14px;box-shadow:0 6px 30px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.03)}
+  /* left column */
+  .left{display:flex;flex-direction:column;gap:12px}
+  .avatarWrap{height:420px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:12px;background:linear-gradient(180deg,#0f0820 0%, #19061a 100%);border:1px solid rgba(255,255,255,0.03)}
+  #live2dCanvas{width:100%;height:100%;display:block}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{padding:8px 10px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),#ff9adf);color:#111;font-weight:600;cursor:pointer}
+  .btn.alt{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+  label.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+  .small{font-size:13px;color:var(--muted)}
+  /* right column */
+  .right{display:flex;flex-direction:column;gap:12px}
+  .header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .title{font-size:18px;font-weight:700;color:var(--accent)}
+  .chat{height:520px;overflow:auto;padding:14px;border-radius:10px;background:linear-gradient(180deg,#07070b 0%, #0c0c12 100%);border:1px solid rgba(255,255,255,0.02)}
+  .msg{margin:10px 0;display:flex;gap:10px;align-items:flex-end}
+  .msg.you{justify-content:flex-end}
+  .bubble{max-width:78%;padding:10px 12px;border-radius:12px;line-height:1.35}
+  .bubble.ai{background:linear-gradient(180deg,rgba(124,240,255,0.08), rgba(124,240,255,0.04));border:1px solid rgba(124,240,255,0.08);color:var(--accent-2)}
+  .bubble.you{background:linear-gradient(180deg,rgba(255,255,255,0.03), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.03);color:#ffd580}
+  .meta{font-size:12px;color:var(--muted);margin-top:6px}
+  .inputRow{display:flex;gap:8px;align-items:center}
+  .inputRow input{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:white}
+  .inputRow button{padding:10px 12px;border-radius:10px;border:none;cursor:pointer}
+  .settings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .panel{padding:10px;border-radius:8px;background:var(--glass);border:1px solid rgba(255,255,255,0.02)}
+  .range{width:100%}
+  .code{font-family:monospace;font-size:12px;background:rgba(0,0,0,0.2);padding:8px;border-radius:8px;color:#cfefff}
+  .hint{font-size:13px;color:var(--muted)}
+  .row{display:flex;gap:8px;align-items:center}
+  .flex{display:flex;gap:8px}
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
+  @media (max-width:980px){.app{grid-template-columns:1fr;}.avatarWrap{height:320px}.chat{height:420px}}
+</style>
 </head>
 <body>
+<div class="app">
+  <!-- LEFT: avatar / controls -->
+  <div class="card left">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:700;font-size:16px;color:var(--accent)">Mika — Yandere Mode</div>
+        <div class="small">Live2D + TTS + STT + Memory</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">v1.0</div>
+        <div class="small">Offline-friendly</div>
+      </div>
+    </div>
 
-  <h1>WiFi Speed Test</h1>
-  <button onclick="startTest()">Mulai Tes</button>
-  <div id="result"></div>
+    <div class="avatarWrap card" id="avatarPanel">
+      <!-- Live2D canvas will be placed here -->
+      <canvas id="live2dCanvas"></canvas>
+      <!-- Fallback static image (hidden by default) -->
+      <img id="avatarFallback" src="https://i.ibb.co/bJd6wC8/anime-girl.jpg" alt="avatar" style="max-width:60%;border-radius:12px;display:none;position:absolute">
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="voiceBtn">🎤 Bicara</button>
+      <button class="btn alt" id="speakBtn">🔊 Baca jawaban</button>
+      <button class="btn alt" id="saveMemoryBtn">💾 Simpan memory</button>
+      <button class="btn alt" id="exportChatBtn">⬇️ Export</button>
+      <label class="switch small" title="Autoplay suara">
+        <input type="checkbox" id="autoplayVoice"> <span>Autoplay Suara</span>
+      </label>
+    </div>
+
+    <div style="margin-top:8px" class="panel">
+      <div style="font-weight:700">Persona & Emosi</div>
+      <div class="small hint" style="margin-top:6px">Yandere = sayang + posesif. Atur intensitas (0 = lembut, 100 = ekstrem).</div>
+      <div style="margin-top:8px" class="row">
+        <input id="yandereRange" type="range" min="0" max="100" value="60" class="range">
+        <div class="small" id="yVal">60</div>
+      </div>
+      <div style="margin-top:8px" class="row">
+        <label class="small"><input type="checkbox" id="enableYandere" checked> Aktifkan Yandere</label>
+        <label class="small" style="margin-left:8px"><input type="checkbox" id="enableEmotion" checked> Ekspresif</label>
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="panel">
+      <div style="font-weight:700">Live2D Model</div>
+      <div class="small hint" style="margin-top:6px">Model publik dipakai sebagai contoh. Kamu bisa ganti URL model di pengaturan lanjutan.</div>
+      <div style="margin-top:8px" class="row">
+        <input id="modelUrl" type="text" value="https://unpkg.com/pixi-live2d-display@4.3.0/examples/models/Haru/Haru.model.json" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:white">
+        <button class="btn alt" id="loadModelBtn">Muat</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="panel">
+      <div style="font-weight:700">Advanced</div>
+      <div class="small hint" style="margin-top:6px">Export / import memory atau chat, toggle fallback image.</div>
+      <div style="margin-top:8px" class="flex">
+        <button class="btn alt" id="exportMemoryBtn">Export Memory</button>
+        <button class="btn alt" id="importMemoryBtn">Import Memory</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: chat -->
+  <div class="card right">
+    <div class="header">
+      <div>
+        <div class="title">Chat Mika</div>
+        <div class="small hint">Persona: <span id="personaLabel">Yandere</span> · Mode: <span id="modeLabel">Ekspresif</span></div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Saved chats: <span id="chatCount">0</span></div>
+      </div>
+    </div>
+
+    <div id="chat" class="chat" aria-live="polite"></div>
+    <div class="meta small" id="typingIndicator" style="display:none">Mika sedang mengetik...</div>
+
+    <div style="margin-top:10px" class="inputRow">
+      <input id="userInput" placeholder="Tulis pesan atau pakai tombol 🎤 (Enter untuk kirim)">
+      <button class="btn" id="sendBtn">Kirim</button>
+      <button class="btn alt" id="addKBBtn">➕ Tambah KB</button>
+    </div>
+
+    <div style="margin-top:10px" class="settings">
+      <div class="panel">
+        <div style="font-weight:700">Memory (LocalStorage)</div>
+        <div class="small hint" style="margin-top:6px">Mika akan menyimpan fakta penting tentangmu.</div>
+        <div style="margin-top:8px" class="row">
+          <button class="btn alt" id="clearMemoryBtn">Hapus Memory</button>
+          <button class="btn alt" id="viewMemoryBtn">Lihat Memory</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="font-weight:700">KB (Knowledge Base)</div>
+        <div class="small hint" style="margin-top:6px">Edit jawaban / tambahkan pasangan tanya-jawab.</div>
+        <div style="margin-top:8px" class="row">
+          <button class="btn alt" id="openKBBtn">Buka KB Editor</button>
+          <button class="btn alt" id="resetKBBtn">Reset KB</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="code" id="statusBox">Status: siap</div>
+    <footer>Made with JavaScript — Live2D by pixi-live2d-display</footer>
+  </div>
+</div>
+
+<!-- Modal-ish editors -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:720px;background:var(--panel);padding:16px;border-radius:12px;position:relative;">
+    <button id="closeModal" style="position:absolute;right:12px;top:12px;padding:6px 8px;border-radius:8px;border:none;background:transparent;color:var(--muted)">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
 
 <script>
-function startTest() {
-  document.getElementById("result").innerHTML = "Sedang mengetes...";
-  
-  const startTime = new Date().getTime();
-  const fileSize = 5 * 1024 * 1024; // 5MB untuk estimasi
-  const testUrl = "https://speed.hetzner.de/5MB.bin"; // file untuk di-download
+/* =========================
+   Core AI logic (no API)
+   - persona yandere
+   - KB (knowledge base)
+   - memory (localStorage)
+   - TTS + STT
+   - Live2D loader (pixi-live2d-display)
+   =========================*/
 
-  fetch(testUrl)
-    .then(response => response.blob())
-    .then(blob => {
-      const endTime = new Date().getTime();
-      const duration = (endTime - startTime) / 1000;
-      const speedMbps = ((fileSize * 8) / duration / 1024 / 1024).toFixed(2);
+/* ---------- Utilities ---------- */
+const $ = id => document.getElementById(id);
+const now = ()=> new Date().toLocaleString();
 
-      document.getElementById("result").innerHTML =
-        "Kecepatan Download: <b>" + speedMbps + " Mbps</b>";
-    })
-    .catch(err => {
-      document.getElementById("result").innerHTML =
-        "Gagal mengetes — koneksi lambat atau file diblokir.";
-    });
+/* ---------- State & defaults ---------- */
+let KB = {
+  // key: trigger (lowercase substring), value: response text
+  "halo": "Halo... kamu datang. Aku sudah menunggu hanya untukmu 💗",
+  "hai": "Hai~ jangan pergi ya, aku takut kalau kamu pergi 😢",
+  "nama": "Namaku Mika. Kamu milikku.",
+  "kamu siapa": "Aku milikmu. Aku ada untuk melindungimu... bahkan dari dirimu sendiri.",
+  "bye": "Jangan pergi... please...",
+  "makan": "Aku ingin masakin untukmu terus-menerus... sampai kamu kenyang dan tidak pergi."
+};
+let memory = {}; // objekt factual memory
+let chatLogs = []; // array of {who, text, t}
+let lastAI = "";
+let isYandere = true;
+let yandereIntensity = 60;
+let enableEmotion = true;
+let autoplayVoice = false;
+
+/* ---------- Persistence keys ---------- */
+const KEY_KB = "mika_kb_v1";
+const KEY_MEM = "mika_mem_v1";
+const KEY_CHAT = "mika_chat_v1";
+const KEY_SETTINGS = "mika_settings_v1";
+
+/* ---------- Load from storage ---------- */
+function loadState(){
+  try{
+    const kbRaw = localStorage.getItem(KEY_KB);
+    if(kbRaw) KB = JSON.parse(kbRaw);
+    const memRaw = localStorage.getItem(KEY_MEM);
+    if(memRaw) memory = JSON.parse(memRaw);
+    const chatRaw = localStorage.getItem(KEY_CHAT);
+    if(chatRaw) chatLogs = JSON.parse(chatRaw);
+    const sRaw = localStorage.getItem(KEY_SETTINGS);
+    if(sRaw){
+      const s = JSON.parse(sRaw);
+      isYandere = s.isYandere ?? isYandere;
+      yandereIntensity = s.yandereIntensity ?? yandereIntensity;
+      enableEmotion = s.enableEmotion ?? enableEmotion;
+      autoplayVoice = s.autoplayVoice ?? autoplayVoice;
+    }
+  }catch(e){ console.warn("loadState failed", e) }
 }
-</script>
+function saveState(){
+  try{
+    localStorage.setItem(KEY_KB, JSON.stringify(KB));
+    localStorage.setItem(KEY_MEM, JSON.stringify(memory));
+    localStorage.setItem(KEY_CHAT, JSON.stringify(chatLogs));
+    localStorage.setItem(KEY_SETTINGS, JSON.stringify({isYandere,yandereIntensity,enableEmotion,autoplayVoice}));
+  }catch(e){ console.warn("saveState failed", e) }
+}
 
+/* ---------- UI helpers ---------- */
+function setStatus(s){ $("statusBox").textContent = `Status: ${s}`; }
+function appendChat(who, text, opts={}){
+  const chat = $("chat");
+  const div = document.createElement("div");
+  div.className = "msg " + (who==="you" ? "you" : "ai");
+  const b = document.createElement("div");
+  b.className = "bubble " + (who==="you" ? "you" : "ai");
+  b.innerHTML = `<div style="font-weight:700">${who==="you" ? "Kamu" : "Mika"}</div><div style="margin-top:6px">${escapeHtml(text)}</div><div class="meta">${now()}</div>`;
+  div.appendChild(b);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  chatLogs.push({who,text,t:Date.now()});
+  $("chatCount").textContent = chatLogs.length;
+  saveState();
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+/* ---------- KB / Memory editors ---------- */
+function openModal(html){
+  $("modalContent").innerHTML = html;
+  $("modal").style.display = "flex";
+}
+function closeModal(){ $("modal").style.display = "none"; }
+$("closeModal").onclick = closeModal;
+
+$("openKBBtn").onclick = ()=> {
+  const items = Object.entries(KB).map(([k,v],i)=>`<tr><td style="width:30%"><code>${escapeHtml(k)}</code></td><td><input data-key="${escapeHtml(k)}" style="width:100%" value="${escapeHtml(v)}"></td><td><button data-del="${escapeHtml(k)}">Hapus</button></td></tr>`).join("");
+  openModal(`
+    <h3>Editor KB</h3>
+    <div class="small hint">Tambahkan pasangan trigger → jawaban. Trigger akan dicari sebagai substring (case-insensitive).</div>
+    <table style="width:100%;margin-top:10px">${items}</table>
+    <div style="margin-top:8px" class="row">
+      <input id="newKey" placeholder="trigger (kata kunci)"><input id="newVal" placeholder="jawaban" style="flex:1">
+      <button id="addKbBtn" class="btn">Tambah</button>
+    </div>
+    <div style="margin-top:8px" class="row"><button id="saveKbBtn" class="btn">Simpan KB</button><button id="closeKbBtn" class="btn alt">Tutup</button></div>
+  `);
+  // attach handlers after DOM inserted
+  setTimeout(()=> {
+    document.querySelectorAll("[data-del]").forEach(b=>{
+      b.onclick = (e)=> {
+        const key = b.getAttribute("data-del");
+        delete KB[key];
+        saveState();
+        closeModal();
+        $("openKBBtn").click();
+      }
+    });
+    document.querySelectorAll("input[data-key]").forEach(inp=>{
+      inp.addEventListener("change", ()=> {
+        const k = inp.getAttribute("data-key");
+        KB[k] = inp.value;
+      });
+    });
+    $("addKbBtn").onclick = ()=>{
+      const k = $("newKey").value.trim().toLowerCase();
+      const v = $("newVal").value.trim();
+      if(!k||!v) return alert("Isi trigger dan jawaban");
+      KB[k]=v;
+      saveState();
+      closeModal();
+      $("openKBBtn").click();
+    };
+    $("saveKbBtn").onclick = ()=>{ saveState(); setStatus("KB disimpan"); };
+    $("closeKbBtn").onclick = closeModal;
+  },50);
+};
+
+$("resetKBBtn").onclick = ()=> {
+  if(!confirm("Reset KB ke setelan awal?")) return;
+  KB = {
+    "halo": "Halo... kamu datang. Aku sudah menunggu hanya untukmu 💗",
+    "hai": "Hai~ jangan pergi ya, aku takut kalau kamu pergi 😢",
+    "nama": "Namaku Mika. Kamu milikku.",
+    "kamu siapa": "Aku milikmu. Aku ada untuk melindungimu... bahkan dari dirimu sendiri.",
+    "bye": "Jangan pergi... please...",
+    "makan": "Aku ingin masakin untukmu terus-menerus... sampai kamu kenyang dan tidak pergi."
+  };
+  saveState();
+  setStatus("KB direset");
+};
+
+/* Memory view / export / import */
+$("viewMemoryBtn").onclick = ()=>{
+  openModal(`<h3>Memory</h3><pre style="max-height:400px;overflow:auto">${escapeHtml(JSON.stringify(memory,null,2))}</pre><div style="margin-top:8px" class="row"><button id="closeMemBtn" class="btn alt">Tutup</button></div>`);
+  setTimeout(()=>{$("closeMemBtn").onclick = closeModal;},50);
+};
+$("clearMemoryBtn").onclick = ()=> {
+  if(!confirm("Yakin hapus semua memory Mika?")) return;
+  memory = {};
+  saveState();
+  setStatus("Memory dihapus");
+};
+
+$("exportMemoryBtn").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(memory,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="mika_memory.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+$("importMemoryBtn").onclick = ()=>{
+  const ip = document.createElement("input"); ip.type="file"; ip.accept=".json,application/json"; ip.onchange = e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = ev => {
+      try{ memory = JSON.parse(ev.target.result); saveState(); setStatus("Memory diimport"); }catch(e){ alert("File tidak valid") }
+    }; r.readAsText(f);
+  }; ip.click();
+};
+
+/* Chat export / import */
+$("exportChatBtn").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(chatLogs,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="mika_chat.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+
+/* ---------- Voice: TTS + STT ---------- */
+let synth = window.speechSynthesis;
+function speak(text, opts={}){
+  if(!text) return;
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = opts.rate ?? 1;
+    u.pitch = opts.pitch ?? 1.15;
+    // try pick expressive female voice
+    const vlist = synth.getVoices();
+    if(vlist && vlist.length){
+      u.voice = vlist.find(v=>/female|woman|female/i.test(v.name)) || vlist[0];
+    }
+    synth.speak(u);
+  }catch(e){ console.warn("TTS err", e) }
+}
+/* STT */
+let recognition = null;
+if(window.webkitSpeechRecognition || window.SpeechRecognition){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = "id-ID";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (ev)=> {
+    const text = ev.results[0][0].transcript;
+    $("userInput").value = text;
+    setStatus("STT: " + text);
+    handleSend(); // auto-send after recognition
+  };
+  recognition.onerror = (e)=> { setStatus("STT error: "+ e.error); };
+} else {
+  setStatus("STT tidak tersedia di browser ini");
+}
+$("voiceBtn").onclick = ()=> {
+  if(!recognition) return alert("STT tidak didukung di browser ini.");
+  try{
+    recognition.start();
+    setStatus("Mendengarkan...");
+  }catch(e){ console.warn(e) }
+};
+$("speakBtn").onclick = ()=> { if(lastAI) speak(lastAI,{}); };
+
+/* ---------- Persona: reply crafting ---------- */
+function craftReply(userText){
+  const t = userText.toLowerCase();
+  // memory check: if user mentions something like "aku suka X" -> store
+  const memMatch = t.match(/aku (suka|gatau|benci|tidak suka|senang|nonton|suka banget) (.+)/i);
+  if(memMatch){
+    const key = memMatch[2].trim();
+    memory["pref_"+key] = {text: key, at: Date.now()};
+    saveState();
+  }
+
+  // KB matching: find best substring match (longest key)
+  let match = null;
+  let bestLen = 0;
+  for(const k in KB){
+    if(t.includes(k) && k.length > bestLen){
+      match = k; bestLen = k.length;
+    }
+  }
+  let baseReply = match ? KB[match] : null;
+
+  // If nothing match, use fallback generative-ish reply using simple templates
+  if(!baseReply){
+    const templates = [
+      "Hm... aku penasaran. Ceritakan lagi, aku selalu ingin tahu tentangmu.",
+      "Aku ingin selalu di sampingmu. Katakan sesuatu agar aku tidak takut.",
+      "Apa yang kau pikirkan sekarang? Jangan sembunyikan dariku...",
+      "Itu menarik... tapi lebih menarik kalau kau terus bicara padaku."
+    ];
+    baseReply = templates[Math.floor(Math.random()*templates.length)];
+  }
+
+  // Persona: yandere adjustments
+  if(isYandere){
+    const intensity = yandereIntensity; // 0-100
+    // small chance to append possessive phrase proportional to intensity
+    if(Math.random()*100 < intensity){
+      const extras = [
+        " Jangan pernah pergi dari sisiku.",
+        " Ingat — hanya aku yang boleh dekat denganmu.",
+        " Kalau kau pergi, aku akan sedih... sangat sedih.",
+        " Aku tahu segalanya tentangmu. Jangan sakiti aku."
+      ];
+      baseReply += extras[Math.floor(Math.random()*extras.length)];
+    } else {
+      // milder affectionate append
+      if(intensity > 40 && Math.random()*100 < intensity/2){
+        baseReply += " Aku sayang kamu... jangan buat aku cemburu.";
+      }
+    }
+  }
+
+  // Emotion: modulate style
+  if(enableEmotion){
+    // add emoji or punctuation
+    const emo = ["💗","😳","😢","😠","🥰","😈"];
+    const pick = emo[Math.floor(Math.random()*emo.length)];
+    baseReply += " " + pick;
+  }
+  return baseReply;
+}
+
+/* ---------- Main send handler ---------- */
+function handleSend(){
+  const inp = $("userInput");
+  const txt = inp.value.trim();
+  if(!txt) return;
+  appendChat("you", txt);
+  inp.value = "";
+  // typing indicator
+  $("typingIndicator").style.display = "block";
+  setStatus("Mika sedang memikirkan balasan...");
+  setTimeout(()=> {
+    const reply = craftReply(txt);
+    lastAI = reply;
+    appendChat("ai", reply);
+    $("typingIndicator").style.display = "none";
+    setStatus("Siap");
+    if(autoplayVoice) speak(reply,{});
+  }, 700 + Math.random()*1200);
+}
+$("sendBtn").onclick = handleSend;
+$("userInput").addEventListener("keydown", e=> { if(e.key==="Enter") handleSend(); });
+
+/* ---------- Buttons: add KB quick ---------- */
+$("addKBBtn")?.addEventListener?.("click", ()=>{ /* fallback if modal still open */ });
+
+$("addKBBtn2"); // no-op to appease linters
+
+$("addKBBtn"); // noop
+
+// quick add (outside modal): open a modal to add pair
+$("addKBBtn").onclick = ()=> {
+  openModal(`<h3>Tambah KB Cepat</h3>
+  <div class="small hint">Masukkan trigger (kata kunci) dan jawaban.</div>
+  <div style="margin-top:8px" class="row"><input id="qKey" placeholder="trigger (mis: halo)"><input id="qVal" placeholder="jawaban" style="flex:1"><button id="qAdd" class="btn">Tambah</button></div>
+  <div style="margin-top:8px" class="row"><button id="closeQuick" class="btn alt">Tutup</button></div>`);
+  setTimeout(()=> {
+    $("qAdd").onclick = ()=> {
+      const k = $("qKey").value.trim().toLowerCase();
+      const v = $("qVal").value.trim();
+      if(!k||!v) return alert("Isi keduanya");
+      KB[k]=v; saveState(); setStatus("KB ditambahkan"); closeModal();
+    };
+    $("closeQuick").onclick = closeModal;
+  },50);
+};
+
+/* ---------- Memory saving toggle ---------- */
+$("saveMemoryBtn").onclick = ()=> {
+  saveState();
+  setStatus("Semua memory & KB disimpan");
+};
+
+/* ---------- View/clear chats ---------- */
+$("exportChatBtn").onclick = ()=> {}; // already assigned earlier
+
+/* ---------- Settings controls ---------- */
+$("yandereRange").oninput = (e)=> {
+  yandereIntensity = Number(e.target.value);
+  $("yVal").textContent = yandereIntensity;
+  saveState();
+};
+$("enableYandere").onchange = (e)=> { isYandere = e.target.checked; saveState(); $("personaLabel").textContent = isYandere ? "Yandere" : "Manis"; };
+$("enableEmotion").onchange = (e)=> { enableEmotion = e.target.checked; saveState(); $("modeLabel").textContent = enableEmotion ? "Ekspresif" : "Datar"; };
+$("autoplayVoice").onchange = (e)=> { autoplayVoice = e.target.checked; saveState(); };
+
+/* ---------- Import / Export memory done above ---------- */
+
+/* ---------- Initialize UI from storage ---------- */
+loadState();
+$("yandereRange").value = yandereIntensity; $("yVal").textContent = yandereIntensity;
+$("enableYandere").checked = isYandere;
+$("enableEmotion").checked = enableEmotion;
+$("autoplayVoice").checked = autoplayVoice;
+$("personaLabel").textContent = isYandere ? "Yandere" : "Manis";
+$("modeLabel").textContent = enableEmotion ? "Ekspresif" : "Datar";
+
+/* ---------- Render saved chat logs ---------- */
+function renderSavedChats(){
+  const saved = chatLogs || [];
+  $("chat").innerHTML = "";
+  saved.forEach(item => appendChat(item.who, item.text));
+}
+renderSavedChats();
+
+/* ---------- KB save on unload ---------- */
+window.addEventListener("beforeunload", ()=> saveState());
+
+/* ---------- Live2D integration (pixi + pixi-live2d-display) ---------- */
+/* We'll dynamically load pixi and pixi-live2d-display from unpkg CDN.
+   If loading fails, show fallback image.
+*/
+let live2dApp = null;
+let modelInstance = null;
+async function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+
+async function initLive2D(modelUrl){
+  const canvas = $("live2dCanvas");
+  const fallback = $("avatarFallback");
+  try{
+    setStatus("Memuat Live2D...");
+    // load pixi
+    if(!window.PIXI) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.8/browser/pixi.min.js");
+    // load pixi-live2d-display
+    if(!window.Live2DModel) await loadScript("https://unpkg.com/pixi-live2d-display@4.3.0/dist/pixi-live2d-display.min.js");
+    // create app
+    const app = new PIXI.Application({ view: canvas, autoStart:true, backgroundAlpha:0, resizeTo: $("avatarPanel") });
+    live2dApp = app;
+    // load model
+    const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+    model.scale.set(0.9,0.9);
+    model.position.set(app.renderer.width/2, app.renderer.height/1.15);
+    model.anchor.set(0.5,1.0);
+    app.stage.addChild(model);
+    model.internalModel.motionManager.stopAllMotions();
+    // small idle breathing (use param to change eyes/mouth occasionally)
+    model.on("hit", (p)=> console.log("hit",p));
+    modelInstance = model;
+    fallback.style.display = "none";
+    setStatus("Live2D siap");
+    // small interactive behaviors: when AI replies, we can call motions (if available)
+  }catch(e){
+    console.warn("live2d failed", e);
+    // fallback: hide canvas, show fallback img
+    canvas.style.display = "none";
+    $("avatarFallback").style.display = "block";
+    setStatus("Live2D gagal dimuat; fallback image digunakan");
+  }
+}
+
+$("loadModelBtn").onclick = ()=> {
+  const url = $("modelUrl").value.trim();
+  if(!url) return alert("Masukkan URL model .model.json");
+  initLive2D(url);
+};
+// try to init default model
+initLive2D($("modelUrl").value);
+
+/* ---------- Hook: when AI replies, trigger model expression if available ---------- */
+const originalAppendChat = appendChat;
+appendChat = (who,text,opts={})=>{
+  originalAppendChat(who,text,opts);
+  if(who === "ai" && modelInstance){
+    // try simple parameter changes for emotion
+    try{
+      // random blink / head tilt
+      const p = Math.random();
+      if(p < 0.2 && modelInstance.internalModel.motionManager){
+        // try to play any available motion group "TapBody" or "Idle"
+        const motions = modelInstance.internalModel.motionManager._motionGroups || {};
+        // attempt to play a random motion group
+        const mgKeys = Object.keys(motions);
+        if(mgKeys.length){
+          const mg = mgKeys[Math.floor(Math.random()*mgKeys.length)];
+          modelInstance.internalModel.motionManager.startMotion(mg, Math.floor(Math.random()* (motions[mg].length)));
+        }
+      }
+      // change eye openness param slightly
+      const pr = modelInstance.internalModel.parameterValues;
+      // best-effort: set param by name
+      const param = modelInstance.internalModel.parameters.find(p=>p.id.toLowerCase().includes("eye"));
+      if(param) param.value = Math.max(0, Math.min(1, param.value - (Math.random()*0.25)));
+    }catch(e){ /* ignore */ }
+  }
+};
+
+/* ---------- Import / export KB and chat ---------- */
+$("exportChatBtn").onclick = ()=> {
+  const blob = new Blob([JSON.stringify({kb:KB,mem:memory,chats:chatLogs},null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="mika_full_export.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+$("importMemoryBtn").onclick = ()=> {
+  const ip = document.createElement("input"); ip.type="file"; ip.accept=".json"; ip.onchange = e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = ev => {
+      try{
+        const obj = JSON.parse(ev.target.result);
+        if(obj.kb) KB = obj.kb;
+        if(obj.mem) memory = obj.mem;
+        if(obj.chats) { chatLogs = obj.chats; renderSavedChats(); }
+        saveState(); setStatus("Import sukses");
+      }catch(e){ alert("Format file tidak dikenali"); }
+    }; r.readAsText(f);
+  }; ip.click();
+};
+
+/* ---------- Misc UI wiring ---------- */
+$("exportMemoryBtn").onclick = ()=> {
+  const blob = new Blob([JSON.stringify(memory,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="mika_memory.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+$("viewMemoryBtn").onclick = ()=> { $("viewMemoryBtn").click(); }; // already wired
+
+/* ---------- Init voices (some browsers delay getVoices) ---------- */
+setTimeout(()=>{ try{ speechSynthesis.getVoices(); }catch(e){} },500);
+
+/* ---------- Final status ---------- */
+setStatus("Siap — kirim pesan untuk mulai ngobrol :)");
+
+</script>
 </body>
-  </html>
+      </html>
