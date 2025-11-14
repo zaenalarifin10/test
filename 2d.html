@@ -1,39 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Live2D Test</title>
-<style>
-    body { margin:0; background:#222; overflow:hidden; }
-</style>
+    <meta charset="UTF-8" />
+    <title>Live2D Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+        }
+        #errorMsg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 26px;
+            font-weight: bold;
+            font-family: sans-serif;
+            text-shadow: 0 0 10px #000;
+            display: none;
+        }
+    </style>
 </head>
 <body>
 
-<script src="https://unpkg.com/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
-<script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/pixi-live2d-display.min.js"></script>
+<canvas id="canvas"></canvas>
+<div id="errorMsg">char tidak dapat di load</div>
+
+<!-- PIXI & Live2D -->
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.8/dist/browser/pixi.min.js"></script>
+<script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/index.min.js"></script>
 
 <script>
-const app = new PIXI.Application({
-    view: document.createElement("canvas"),
-    resizeTo: window,
-    backgroundColor: 0x222222,
-});
-document.body.appendChild(app.view);
+const modelPath = "models/hiyori_free_t08.model3.json"; // posisi model kamu
 
-// INI HARUS SAMA DENGAN STRUKTUR KAMU
-const modelPath = "models/hiyori_free_t08.cdi3.json";
+(async () => {
+    try {
+        // Setup canvas
+        const app = new PIXI.Application({
+            view: document.getElementById("canvas"),
+            autoStart: true,
+            backgroundAlpha: 0,
+            resizeTo: window
+        });
 
-PIXI.live2d.Live2DModel.from(modelPath)
-.then(model => {
-    app.stage.addChild(model);
-    model.scale.set(0.45);
-    model.x = window.innerWidth / 2;
-    model.y = window.innerHeight;
-    model.anchor.set(0.5, 1);
-})
-.catch(err => {
-    alert("ERROR LOADING MODEL: " + err);
-});
+        // Load model
+        const model = await PIXI.live2d.Live2DModel.from(modelPath);
+        app.stage.addChild(model);
+
+        // Posisi & ukuran
+        model.scale.set(0.5);
+        model.x = window.innerWidth / 2;
+        model.y = window.innerHeight * 0.95;
+
+        console.log("Model berhasil diload");
+
+        // Jalankan motion idle otomatis (kalau ada)
+        const playIdle = () => {
+            if (model.internalModel.motionManager && model.internalModel.motionManager.definitions["Idle"]) {
+                model.motion("Idle");
+            }
+        };
+        playIdle();
+        setInterval(playIdle, 8000); // idle jalan ulang tiap 8 detik
+
+    } catch (err) {
+        console.error("Gagal load model:", err);
+        document.getElementById("errorMsg").style.display = "block";
+    }
+})();
 </script>
 
 </body>
