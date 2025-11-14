@@ -23,39 +23,27 @@
     // Path mengikuti struktur kamu
     const modelPath = "models/hiyori_free_t08.cdi3.json";
 
-    PIXI.live2d.Live2DModel.from(modelPath).then(model => {
-        app.stage.addChild(model);
-        
-        // posisi dan skala
-        model.scale.set(0.45);
-        model.x = window.innerWidth / 2;
-        model.y = window.innerHeight;
-        model.anchor.set(0.5, 1);
+    PIXI.live2d.Live2DModel.from(modelPath)
+.then(model => {
+    app.stage.addChild(model);
 
-        // Deteksi motion di folder /motions/
-        const motionDefs = model.internalModel.motionManager.definitions;
-        const groups = Object.keys(motionDefs);
-        let idleGroup = groups.find(g => g.toLowerCase().includes("idle"));
-        if (!idleGroup) idleGroup = groups[0]; // fallback
+    model.scale.set(0.45);
+    model.x = window.innerWidth / 2;
+    model.y = window.innerHeight;
+    model.anchor.set(0.5, 1);
 
-        // Loop idle
-        function idleLoop() {
-            if (model.motionManager.isFinished()) {
-                model.motionManager.startMotion(idleGroup, 0, 1);
-            }
-        }
-        app.ticker.add(idleLoop);
+    console.log("MODEL LOADED OK");
 
-        // Klik untuk motion berikutnya
-        let index = 0;
-        document.addEventListener("click", () => {
-            const group = groups[0]; // grup pertama, bisa Tap/Body/Special tergantung model
-            const max = motionDefs[group].length;
-            index = (index + 1) % max;
-            model.motionManager.startMotion(group, index, 1);
-        });
-
-    }).catch(err => console.error(err));
+    const motionDefs = model.internalModel.motionManager.definitions;
+    console.log("MOTION LIST:", motionDefs);
+})
+.catch(err => {
+    const div = document.createElement("div");
+    div.style = "position:fixed;top:0;left:0;color:red;background:black;padding:10px;font-size:18px;z-index:9999";
+    div.innerText = "ERROR: " + err;
+    document.body.appendChild(div);
+    console.error(err);
+});
 </script>
 </body>
 </html>
