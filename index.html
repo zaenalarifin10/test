@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Speed Test WiFi</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 60px; }
+    h1 { font-size: 32px; }
+    button { padding: 12px 25px; font-size: 20px; cursor: pointer; }
+    #result { margin-top: 25px; font-size: 26px; }
+  </style>
+</head>
+<body>
+
+  <h1>WiFi Speed Test</h1>
+  <button onclick="startTest()">Mulai Tes</button>
+  <div id="result"></div>
+
+<script>
+function startTest() {
+  document.getElementById("result").innerHTML = "Sedang mengetes...";
+  
+  const startTime = new Date().getTime();
+  const fileSize = 5 * 1024 * 1024; // 5MB untuk estimasi
+  const testUrl = "https://speed.hetzner.de/5MB.bin"; // file untuk di-download
+
+  fetch(testUrl)
+    .then(response => response.blob())
+    .then(blob => {
+      const endTime = new Date().getTime();
+      const duration = (endTime - startTime) / 1000;
+      const speedMbps = ((fileSize * 8) / duration / 1024 / 1024).toFixed(2);
+
+      document.getElementById("result").innerHTML =
+        "Kecepatan Download: <b>" + speedMbps + " Mbps</b>";
+    })
+    .catch(err => {
+      document.getElementById("result").innerHTML =
+        "Gagal mengetes — koneksi lambat atau file diblokir.";
+    });
+}
+</script>
+
+</body>
+  </html>
