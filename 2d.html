@@ -1,49 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Live2D Hiyori</title>
-    <style>
-        body { margin:0; background:#111; overflow:hidden; }
-        canvas { position:fixed; inset:0; }
-    </style>
+<meta charset="UTF-8">
+<title>Live2D Test</title>
+<style>
+    body { margin:0; background:#222; overflow:hidden; }
+</style>
 </head>
 <body>
+
 <script src="https://unpkg.com/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
 <script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/pixi-live2d-display.min.js"></script>
 
 <script>
-    const app = new PIXI.Application({
-        view: document.createElement("canvas"),
-        resizeTo: window,
-        backgroundColor: 0x111111,
-    });
-    document.body.appendChild(app.view);
+const app = new PIXI.Application({
+    view: document.createElement("canvas"),
+    resizeTo: window,
+    backgroundColor: 0x222222,
+});
+document.body.appendChild(app.view);
 
-    // Path mengikuti struktur kamu
-    const modelPath = "models/hiyori_free_t08.cdi3.json";
+// INI HARUS SAMA DENGAN STRUKTUR KAMU
+const modelPath = "models/hiyori_free_t08.cdi3.json";
 
-    PIXI.live2d.Live2DModel.from(modelPath)
+PIXI.live2d.Live2DModel.from(modelPath)
 .then(model => {
     app.stage.addChild(model);
-
     model.scale.set(0.45);
     model.x = window.innerWidth / 2;
     model.y = window.innerHeight;
     model.anchor.set(0.5, 1);
-
-    console.log("MODEL LOADED OK");
-
-    const motionDefs = model.internalModel.motionManager.definitions;
-    console.log("MOTION LIST:", motionDefs);
 })
 .catch(err => {
-    const div = document.createElement("div");
-    div.style = "position:fixed;top:0;left:0;color:red;background:black;padding:10px;font-size:18px;z-index:9999";
-    div.innerText = "ERROR: " + err;
-    document.body.appendChild(div);
-    console.error(err);
+    alert("ERROR LOADING MODEL: " + err);
 });
 </script>
+
 </body>
 </html>
