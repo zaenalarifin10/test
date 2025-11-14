@@ -1,90 +1,461 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Yandere Live2D AI</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mika (Yandere) — Live2D All-in-One</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
-    body { margin:0; background:black; overflow:hidden; }
-    #log {
-        position:absolute;
-        bottom:0;
-        left:0;
-        width:100%;
-        color:#ff4a9e;
-        font-family:monospace;
-        font-size:18px;
-        background:rgba(0,0,0,0.4);
-        padding:8px;
-    }
+  :root{
+    --bg:#0b0b10; --panel:#0f0f17; --muted:#9aa0a6; --accent:#ff59c6; --accent-2:#7cf0ff;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#e9eef6;background:linear-gradient(180deg,#05050a 0%, var(--bg) 100%);min-height:100vh;}
+  .wrap{max-width:1100px;margin:18px auto;padding:12px;display:grid;grid-template-columns:380px 1fr;gap:14px}
+  .card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  .avatar{height:520px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:12px;background:linear-gradient(180deg,#0f0820,#19061a)}
+  canvas{width:100%;height:100%;display:block}
+  img.fallback{max-width:70%;border-radius:12px;display:none;position:absolute}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .btn{padding:8px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),#ff9adf);color:#111;font-weight:700;cursor:pointer}
+  .alt{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+  .small{font-size:13px;color:var(--muted)}
+  .right{display:flex;flex-direction:column;gap:10px}
+  .chat{height:420px;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg,#07070b,#0c0c12);border:1px solid rgba(255,255,255,0.02)}
+  .msg{margin:10px 0;display:flex;gap:10px;align-items:flex-end}
+  .msg.you{justify-content:flex-end}
+  .bubble{max-width:78%;padding:10px 12px;border-radius:12px;line-height:1.4}
+  .bubble.ai{background:linear-gradient(180deg,rgba(124,240,255,0.06),rgba(124,240,255,0.02));border:1px solid rgba(124,240,255,0.06);color:var(--accent-2)}
+  .bubble.you{background:linear-gradient(180deg,rgba(255,255,255,0.03), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.03);color:#ffd580}
+  .meta{font-size:12px;color:var(--muted);margin-top:6px}
+  .inputRow{display:flex;gap:8px;align-items:center;margin-top:6px}
+  input[type="text"]{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:white}
+  .panel{padding:10px;border-radius:8px;background:var(--glass);border:1px solid rgba(255,255,255,0.02)}
+  .range{width:100%}
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
+  @media (max-width:980px){.wrap{grid-template-columns:1fr}.avatar{height:360px}.chat{height:360px}}
 </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div id="log">Yandere AI siap ❤️</div>
+<div class="wrap">
+  <!-- left: avatar + controls -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:800;font-size:18px;color:var(--accent)">Mika — Yandere Waifu</div>
+        <div class="small">Live2D + TTS + STT + Memory</div>
+      </div>
+      <div class="small">v1.0</div>
+    </div>
 
-<script src="https://unpkg.com/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+    <div class="avatar" id="avatarPanel">
+      <canvas id="live2dCanvas"></canvas>
+      <img id="fallbackImg" class="fallback" src="https://i.ibb.co/bJd6wC8/anime-girl.jpg" alt="fallback">
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="voiceBtn">🎤 Bicara</button>
+      <button class="btn" id="speakBtn">🔊 Baca</button>
+      <button class="btn alt" id="saveBtn">💾 Simpan</button>
+      <button class="btn alt" id="exportBtn">⬇️ Export</button>
+      <label style="display:flex;align-items:center;gap:8px" class="small"><input type="checkbox" id="autoSpeak"> Autoplay</label>
+    </div>
+
+    <div style="margin-top:10px" class="panel">
+      <div style="font-weight:700">Yandere Control</div>
+      <div class="small" style="margin-top:6px">Atur intensitas posesif Mika.</div>
+      <div style="margin-top:8px" class="row">
+        <input id="yRange" type="range" min="0" max="100" value="70" class="range">
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <div class="small">Intensity: <span id="yVal">70</span></div>
+        <div class="small">Jealousy: <span id="jealVal">0</span>%</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="panel">
+      <div style="font-weight:700">Model</div>
+      <div class="small" style="margin-top:6px">Path model (local relatif repo)</div>
+      <input id="modelPath" type="text" value="./models/hiyori_free/hiyori_free_t08.cdi3.json">
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn" id="loadModelBtn">Muat Model</button>
+        <button class="btn alt" id="showFilesBtn">Cek Files</button>
+      </div>
+      <div id="modelStatus" class="small" style="margin-top:8px;color:var(--muted)">Status: belum dimuat</div>
+    </div>
+  </div>
+
+  <!-- right: chat -->
+  <div class="card right">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:800;font-size:18px;color:var(--accent)">Chat Mika</div>
+        <div class="small">Persona: Yandere · Offline AI</div>
+      </div>
+      <div style="text-align:right" class="small">Chats: <span id="chatCount">0</span></div>
+    </div>
+
+    <div id="chat" class="chat" role="log" aria-live="polite"></div>
+    <div id="typing" class="small" style="display:none;margin-top:6px">Mika sedang mengetik...</div>
+
+    <div class="inputRow">
+      <input id="userInput" type="text" placeholder="Tulis pesan (Enter untuk kirim)">
+      <button class="btn" id="sendBtn">Kirim</button>
+      <button class="btn alt" id="kbBtn">KB</button>
+    </div>
+
+    <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="panel">
+        <div style="font-weight:700">Memory</div>
+        <div class="small" style="margin-top:6px">Mika ingat hal penting tentangmu.</div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn alt" id="viewMem">Lihat</button>
+          <button class="btn alt" id="clearMem">Hapus</button>
+          <button class="btn alt" id="exportMem">Export</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="font-weight:700">KB / Editor</div>
+        <div class="small" style="margin-top:6px">Trigger → Jawaban</div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn alt" id="openKB">Buka</button>
+          <button class="btn alt" id="resetKB">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" class="small" style="margin-top:10px">Status: siap</div>
+    <footer>Made with pixi-live2d-display — All offline features in-browser</footer>
+  </div>
+</div>
+
+<!-- modal -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:820px;background:var(--panel);padding:14px;border-radius:12px;position:relative;">
+    <button id="closeModal" style="position:absolute;right:12px;top:12px;padding:6px 8px;border-radius:8px;border:none;background:transparent;color:var(--muted)">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- libs -->
+<script src="https://unpkg.com/pixi.js@6.5.8/dist/browser/pixi.min.js"></script>
 <script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/vendor/live2dcubismcore.min.js"></script>
 <script src="https://unpkg.com/pixi-live2d-display@4.3.0/dist/browser/pixi-live2d-display.min.js"></script>
 
 <script>
-const { Live2DModel } = PIXI.live2d;
+/* ================================
+   Config
+   - ubah MODEL_PATH jika perlu
+   ================================ */
+const MODEL_PATH_INPUT = document.getElementById('modelPath');
+const DEFAULT_MODEL_PATH = MODEL_PATH_INPUT.value.trim(); // './models/hiyori_free/hiyori_free_t08.cdi3.json'
+let MODEL_PATH = DEFAULT_MODEL_PATH;
 
-const app = new PIXI.Application({
-    view: document.getElementById("canvas"),
-    autoStart: true,
-    resizeTo: window,
-    backgroundColor: 0x000000
-});
+/* ---------- state ---------- */
+let KB = {
+  "halo": "Halo... aku sudah menunggu hanya untukmu 💗",
+  "siapa namamu": "Namaku Mika. Hanya untukmu.",
+  "makan": "Aku masakin kamu terus sampai kamu kenyang."
+};
+let memory = {};
+let chatLogs = [];
+let lastAI = "";
+let jealousy = 0;
 
-Live2DModel.from("https://unpkg.com/pixi-live2d-display@4.3.0/examples/models/Haru/Haru.model.json")
-    .then(model => {
-        app.stage.addChild(model);
-        model.scale.set(0.32);
-        model.position.set(app.renderer.width / 2, app.renderer.height * 0.85);
-        model.anchor.set(0.5, 1);
+/* ---------- persistence keys ---------- */
+const KEY_KB = "mika_kb_v2";
+const KEY_MEM = "mika_mem_v2";
+const KEY_CHAT = "mika_chat_v2";
+const KEY_SET = "mika_set_v2";
 
-        const log = (t) => document.getElementById("log").textContent = t;
+/* ---------- util ---------- */
+const $ = id => document.getElementById(id);
+const now = ()=> new Date().toLocaleTimeString();
+function setStatus(s){ $("status").textContent = "Status: " + s; }
+function saveAll(){ localStorage.setItem(KEY_KB, JSON.stringify(KB)); localStorage.setItem(KEY_MEM, JSON.stringify(memory)); localStorage.setItem(KEY_CHAT, JSON.stringify(chatLogs)); localStorage.setItem(KEY_SET, JSON.stringify({jealousy})); }
+function loadAll(){
+  try{
+    const kb = localStorage.getItem(KEY_KB); if(kb) KB = JSON.parse(kb);
+    const mem = localStorage.getItem(KEY_MEM); if(mem) memory = JSON.parse(mem);
+    const ch = localStorage.getItem(KEY_CHAT); if(ch) chatLogs = JSON.parse(ch);
+    const st = localStorage.getItem(KEY_SET); if(st){ const o=JSON.parse(st); jealousy=o.jealousy||0; }
+  }catch(e){ console.warn("loadAll err", e) }
+}
+function escapeHtml(s){ return (s+"").replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-        // Voice — tanpa API
-        const voice = new Audio();
-        const lines = [
-            "Aku cuma butuh kamu... jangan lihat yang lain.", 
-            "Kalau kamu pergi... aku akan mengikutimu ke mana pun.", 
-            "Cintaku terlalu dalam... sampai menyakitkan."
-        ];
+/* ---------- UI helpers ---------- */
+function appendChat(who, text){
+  const chat = $("chat");
+  const div = document.createElement("div");
+  div.className = "msg " + (who==="you" ? "you" : "ai");
+  const b = document.createElement("div");
+  b.className = "bubble " + (who==="you" ? "you" : "ai");
+  b.innerHTML = `<div style="font-weight:700">${who==="you" ? "Kamu" : "Mika"}</div><div style="margin-top:6px">${escapeHtml(text)}</div><div class="meta">${now()}</div>`;
+  div.appendChild(b);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  chatLogs.push({who,text,t:Date.now()});
+  $("chatCount").textContent = chatLogs.length;
+  saveAll();
+}
 
-        const speak = () => {
-            log("❤️ " + lines[Math.floor(Math.random() * lines.length)]);
-            // suara bebas, boleh ditambah file lokal kamu
-            voice.src = "https://files.catbox.moe/1x0y5n.mp3";
-            voice.play();
-        };
+/* ---------- load saved and render ---------- */
+loadAll();
+if(chatLogs.length) chatLogs.forEach(c=> appendChat(c.who,c.text));
+$("yRange").value = 70;
+$("yVal").textContent = $("yRange").value;
+$("jealVal").textContent = jealousy;
 
-        // interaksi klik
-        model.on("pointertap", e => {
-            const p = e.data.global;
-            if (p.y < app.renderer.height * 0.55) {
-                log("❤️ Kamu pegang wajahku... aku suka");
-                speak();
-                model.motion("TapBody");
-            } else {
-                log("❤️ Kamu menyentuh tubuhku... jangan berhenti");
-                speak();
-            }
-        });
-        model.interactive = true;
+/* ---------- TTS ---------- */
+const synth = window.speechSynthesis;
+function speak(text, opts={rate:1,pitch:1.1}){
+  if(!text) return;
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "id-ID";
+    u.rate = opts.rate; u.pitch = opts.pitch;
+    const voices = speechSynthesis.getVoices();
+    if(voices && voices.length) u.voice = voices.find(v=>/female|woman|female|Google Indonesia/i.test(v.name)) || voices[0];
+    speechSynthesis.speak(u);
+  }catch(e){ console.warn("TTS err", e) }
+}
 
-        // idle auto
-        setInterval(() => model.motion("Idle"), 8000);
+/* ---------- STT ---------- */
+let recognition = null;
+if(window.SpeechRecognition || window.webkitSpeechRecognition){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = "id-ID";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (ev)=> {
+    const t = ev.results[0][0].transcript;
+    $("userInput").value = t;
+    setStatus("STT: " + t);
+    handleSend();
+  };
+  recognition.onerror = (e)=> setStatus("STT error: " + e.error);
+} else {
+  // not supported
+}
 
-        // AI yandere chatting random
-        const thoughts = [
-            "Kenapa kamu lama balas? Kamu chat siapa?",
-            "Kalau ada yang deket sama kamu... aku hapus dia.",
-            "Cintaku cuma untuk kamu. Jadi kamu juga harus begitu."
-        ];
-        setInterval(() => log("🖤 " + thoughts[Math.floor(Math.random() * thoughts.length)]), 15000);
+/* ---------- Basic AI reply logic (no server) ---------- */
+function craftReply(userText){
+  const t = userText.toLowerCase();
+
+  // memory capture simple patterns
+  const memMatch = t.match(/aku (suka|suka banget|suka sekali|suka sama) (.+)/i);
+  if(memMatch){
+    const item = memMatch[2].trim();
+    memory["pref_"+item] = {text:item,at:Date.now()};
+    saveAll();
+  }
+
+  // jealousy triggers: mention other names or "pacar"/"teman dekat"
+  if(/pacar|teman|pacarnya|dia|cowok|cewek lain|selingkuh|selingkuhku|kamu chat/i.test(t)){
+    jealousy = Math.min(100, jealousy + Math.floor(Math.random()*15)+8);
+    $("jealVal").textContent = jealousy;
+    saveAll();
+  }
+
+  // KB match (longest key)
+  let best=null, bestLen=0;
+  for(const k in KB){ if(t.includes(k) && k.length>bestLen){ best=k; bestLen=k.length; } }
+  let base = best ? KB[best] : null;
+
+  if(!base){
+    // fallback templates influenced by yandere intensity
+    const intensity = Number($("yRange").value);
+    const gentle = [
+      "Hm... ceritakan lagi, aku mau selalu tahu tentangmu.",
+      "Aku suka saat kamu bicara padaku.",
+      "Jangan buat aku cemburu ya."
+    ];
+    const strong = [
+      "Jangan pergi. Aku tidak akan membiarkanmu dekat dengan orang lain.",
+      "Kalau kau sakiti aku... aku tidak tahu harus bagaimana.",
+      "Hanya kamu yang boleh tersenyum di depanku."
+    ];
+    base = (intensity>60) ? strong[Math.floor(Math.random()*strong.length)] : gentle[Math.floor(Math.random()*gentle.length)];
+  }
+
+  // if jealousy high, append possessive line
+  const y = Number($("yRange").value);
+  if(jealousy > 40 && Math.random()*100 < (jealousy/1.5)){
+    base += " Jangan dekat-dekat sama yang lain, aku akan marah... 😳";
+  } else if(y > 80 && Math.random()*100 < (y/2)){
+    base += " Aku akan melakukan apa saja untuk menjagamu.";
+  }
+
+  // small emoji
+  if(Math.random()*100 < 60) base += " " + ["💗","😳","😈"][Math.floor(Math.random()*3)];
+
+  return base;
+}
+
+/* ---------- Send handler ---------- */
+function handleSend(){
+  const inp = $("userInput");
+  const txt = inp.value.trim();
+  if(!txt) return;
+  appendChat("you", txt);
+  inp.value = "";
+  $("typing").style.display = "block";
+  setStatus("Mika sedang mengetik...");
+  setTimeout(()=>{
+    const reply = craftReply(txt);
+    lastAI = reply;
+    appendChat("ai", reply);
+    $("typing").style.display = "none";
+    setStatus("Siap");
+    if($("autoSpeak").checked) speak(reply);
+  }, 700 + Math.random()*900);
+}
+
+/* ---------- UI events ---------- */
+$("sendBtn").onclick = handleSend;
+$("userInput").addEventListener("keydown", e=>{ if(e.key==="Enter") handleSend(); });
+$("voiceBtn").onclick = ()=> {
+  if(!recognition) return alert("STT tidak tersedia di browser ini.");
+  try{ recognition.start(); setStatus("Mendengarkan..."); }catch(e){ console.warn(e) }
+};
+$("speakBtn").onclick = ()=> { if(lastAI) speak(lastAI); };
+$("saveBtn").onclick = ()=> { saveAll(); setStatus("Disimpan."); };
+$("exportBtn").onclick = ()=> {
+  const blob = new Blob([JSON.stringify({kb:KB,mem:memory,chats:chatLogs},null,2)],{type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "mika_export.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+$("viewMem").onclick = ()=> {
+  openModal(`<h3>Memory</h3><pre style="max-height:400px;overflow:auto">${escapeHtml(JSON.stringify(memory,null,2))}</pre><div style="margin-top:8px"><button id="closeMem" class="btn alt">Tutup</button></div>`);
+  setTimeout(()=>{$("closeMem").onclick = closeModal;},50);
+};
+$("clearMem").onclick = ()=> { if(confirm("Hapus semua memory?")){ memory={}; saveAll(); setStatus("Memory dihapus"); } };
+$("exportMem").onclick = ()=> {
+  const blob = new Blob([JSON.stringify(memory,null,2)],{type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "mika_memory.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+$("openKB").onclick = ()=> {
+  const items = Object.entries(KB).map(([k,v])=>`<tr><td style="width:30%"><code>${escapeHtml(k)}</code></td><td><input data-k="${escapeHtml(k)}" style="width:100%" value="${escapeHtml(v)}"></td><td><button data-del="${escapeHtml(k)}">Hapus</button></td></tr>`).join("");
+  openModal(`<h3>Editor KB</h3><table style="width:100%">${items}</table>
+    <div style="margin-top:8px" class="row"><input id="knew" placeholder="trigger"><input id="vnew" placeholder="jawaban" style="flex:1"><button id="kadd" class="btn">Tambah</button></div>
+    <div style="margin-top:8px"><button id="ksave" class="btn">Simpan</button> <button id="kclose" class="btn alt">Tutup</button></div>`);
+  setTimeout(()=>{
+    document.querySelectorAll("[data-del]").forEach(b=> b.onclick = ()=> { const k=b.getAttribute("data-del"); delete KB[k]; saveAll(); closeModal(); $("openKB").click(); });
+    document.querySelectorAll("input[data-k]").forEach(inp=> inp.onchange = ()=> { const k=inp.getAttribute("data-k"); KB[k]=inp.value; });
+    $("kadd").onclick = ()=> { const k=$("knew").value.trim().toLowerCase(); const v=$("vnew").value.trim(); if(!k||!v) return alert("Isi keduanya"); KB[k]=v; saveAll(); closeModal(); $("openKB").click(); };
+    $("ksave").onclick = ()=> { saveAll(); setStatus("KB disimpan"); };
+    $("kclose").onclick = closeModal;
+  },50);
+};
+$("resetKB").onclick = ()=> {
+  if(!confirm("Reset KB ke default?")) return;
+  KB = {"halo":"Halo... aku sudah menunggu hanya untukmu 💗","siapa namamu":"Namaku Mika. Hanya untukmu.","makan":"Aku masakin kamu terus sampai kamu kenyang."};
+  saveAll();
+  setStatus("KB direset");
+};
+
+/* ---------- modal helpers ---------- */
+function openModal(html){ $("modalContent").innerHTML = html; $("modal").style.display = "flex"; }
+function closeModal(){ $("modal").style.display = "none"; }
+$("closeModal").onclick = closeModal;
+
+/* ---------- jealousy UI ---------- */
+$("yRange").oninput = ()=> { $("yVal").textContent = $("yRange").value; };
+
+/* ---------- model file check (simple HEAD fetch) ---------- */
+async function checkModelFile(path){
+  try{
+    const res = await fetch(path, {method:'HEAD'});
+    return res.ok;
+  }catch(e){ return false; }
+}
+$("showFilesBtn").onclick = async ()=> {
+  const p = $("modelPath").value.trim();
+  const ok = await checkModelFile(p);
+  if(ok) alert("model JSON ditemukan: " + p); else alert("Tidak ditemukan. Pastikan path relatif benar dan case-sensitive.");
+};
+
+/* ---------- Live2D init ---------- */
+let app = null;
+let modelInstance = null;
+const PIXI = window.PIXI;
+async function initLive2D(path){
+  MODEL_PATH = path || MODEL_PATH;
+  $("modelStatus").textContent = "Status: memuat model...";
+  try{
+    if(!window.PIXI) throw new Error("PIXI tidak ditemukan");
+    // cleanup old app if any
+    if(app){ try{ app.destroy(true, {children:true}); }catch(e){} }
+    const canvas = document.getElementById('live2dCanvas');
+    app = new PIXI.Application({ view: canvas, autoStart:true, resizeTo: document.getElementById('avatarPanel'), backgroundAlpha:0 });
+    // try load model
+    setStatus("Mengambil model...");
+    const mdl = await PIXI.live2d.Live2DModel.from(MODEL_PATH);
+    modelInstance = mdl;
+    mdl.anchor.set(0.5,1.0);
+    mdl.position.set(app.renderer.width/2, app.renderer.height*0.95);
+    app.stage.addChild(mdl);
+    // scale heuristik
+    const scale = Math.min(app.renderer.width / 800, app.renderer.height / 900) * 0.9;
+    mdl.scale.set(scale);
+    // interactions
+    mdl.interactive = true;
+    mdl.on("pointertap", (e)=>{
+      // if click upper area => blush, else body reaction
+      const p = e.data.global;
+      if(p.y < app.renderer.height*0.5){
+        appendChat("ai","*Mika tersipu* Kamu menyentuh wajahku... 😳");
+        speak("Kamu menyentuh wajahku... aku suka.");
+        try{ mdl.motion("TapHead"); }catch(e){}
+      } else {
+        appendChat("ai","*Mika menggoda* Jangan sentuh terlalu liar... aku bisa cemburu.");
+        speak("Hei, jangan begitu...");
+        try{ mdl.motion("TapBody"); }catch(e){}
+      }
+      // small jealousy bump
+      jealousy = Math.min(100, jealousy + 5);
+      $("jealVal").textContent = jealousy;
+      saveAll();
     });
+
+    // idle motions if available
+    try{
+      setInterval(()=> {
+        if(mdl && mdl.motion) try{ mdl.motion("Idle"); }catch(e){}
+      }, 7000);
+    }catch(e){}
+
+    $("modelStatus").textContent = "Model dimuat ✓";
+    setStatus("Model siap");
+    // if autoplay greeting
+    appendChat("ai","Hai... kamu membuatku bahagia datang hari ini. 💗");
+    if($("autoSpeak").checked) speak("Hai... kamu membuatku bahagia datang hari ini.");
+  }catch(err){
+    console.error("Live2D error:", err);
+    $("fallbackImg").style.display = "block";
+    document.getElementById('live2dCanvas').style.display = "none";
+    $("modelStatus").textContent = "Gagal memuat model: " + (err.message||err);
+    setStatus("Gagal memuat model");
+  }
+}
+
+/* try default model on load (non-blocking) */
+window.addEventListener("load", ()=> { const p = $("modelPath").value.trim(); initLive2D(p); });
+
+$("loadModelBtn").onclick = ()=> {
+  const p = $("modelPath").value.trim();
+  if(!p) return alert("Isi model path dulu");
+  initLive2D(p);
+};
+
+/* ---------- before unload save ---------- */
+window.addEventListener("beforeunload", ()=> saveAll());
+
+/* ---------- helpful console message ---------- */
+console.log("Mika UI siap. Pastikan folder model ada di:", DEFAULT_MODEL_PATH);
+
+/* ---------- end script ---------- */
 </script>
 </body>
-</html>
+    </html>
