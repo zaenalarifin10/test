@@ -20,7 +20,7 @@
     });
     document.body.appendChild(app.view);
 
-    const modelPath = "models/hiyori/hiyori_free_t08.cdi3.json";
+    const modelPath = "models/hiyori_free_t08.cdi3.json";
 
     PIXI.live2d.Live2DModel.from(modelPath).then(model => {
         app.stage.addChild(model);
@@ -58,7 +58,7 @@
             model.motionManager.startMotion(group, current, 1);
 
             // jika ada suara dengan nama sama → auto play
-            const sound = `models/hiyori/sounds/${group}_${current}.mp3`;
+            const sound = `models/sounds/${group}_${current}.mp3`;
             new Audio(sound).play().catch(()=>{});
         });
     });
